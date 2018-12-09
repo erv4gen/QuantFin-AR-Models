@@ -56,6 +56,43 @@ str(fit.gamma)
 
 fit.gamma$estimate
 
+
+rgamma(n = 1 ,shape = as.numeric(fit.gamma$estimate[c("shape")]), rate= as.numeric(fit.gamma$estimate["rate"]) )
+
+#Kolmogorov-Smirnov test simulation
+
+n.sims <- 5e4
+
+stats <- replicate(n.sims, 
+  {      
+          r <- rgamma(n = length(x)
+                        , shape = as.numeric(fit.gamma$estimate[c("shape")])
+                        , rate= as.numeric(fit.gamma$estimate["rate"])
+                       )
+          
+          as.numeric(ks.test(r
+                             , "pgamma"
+                             , shape = as.numeric(fit.gamma$estimate[c("shape")])
+                             , rate= as.numeric(fit.gamma$estimate["rate"])
+                             )$statistic
+                      )      
+  }
+)
+
+plot(ecdf(stats), las = 1, main = "KS-test statistic simulation (CDF)", col = "darkorange", lwd = 1.7)
+grid()
+
+#p-value for KS test
+fit <- logspline(stats)
+
+pvalue <- 1 - plogspline(ks.test(unique(x)
+                       , "pgamma"
+                       , shape = as.numeric(fit.gamma$estimate[c("shape")])
+                       , rate= as.numeric(fit.gamma$estimate["rate"])
+                      )$statistic
+               , fit
+              )
+
 library("rjags")
 library("coda")
 
@@ -63,36 +100,38 @@ library("coda")
 mod_string <- "model {
   #Likelihood
   for(i in 1:n) {
-    y[i] ~ dnorm(mu,1.0/sig2)
+    y[i] ~ dgamma(alpha,beta)
   }
   #Prior
-  mu ~ dt(0.0,1.0/1.0,1)
-  sig2 = 1.0
-}"
+  alpha ~ dnorm(1.80567063,1.0/1.0*250)
+  beta ~ dnorm(0.09418998, 1.0/1.0*1050)
+  
+                    }"
 #Set up the model
 set.seed(50)
 
 
 n = nrow(vola)
 data_jags <- list(y=vola$lvol,n=n)
-params <- c("mu")
+params <- c("alpha","beta")
 
 inits <- function() {
-  mu_init = 1.0
-  inits <- list("mu" = mu_init)
+  alpha_init = 1.80567063
+  beta_inits = 0.09418998
+  inits <- list("alpha" = alpha_init,
+                "beta" =beta_inits )
 }
 
 mod = jags.model(textConnection(mod_string),
                  data = data_jags,
-                 inits = inits,
+                 inits = inits,n.adapt = 5e2,
                  n.chains = 3)
 
-#Run the MCMC sample 
-update(mod,500)
+
 
 mod_sim <-coda.samples(model = mod,
                        variable.names = params,
-                       n.iter =5e3)
+                       n.iter =5e5)
 
 #Post processing 
 
@@ -103,4 +142,11 @@ gelman.diag(mod_sim)
 autocorr.diag(mod_sim)
 effectiveSize(mod_sim)
 mod_csim  <- as.mcmc(do.call(rbind,mod_sim))
-100*mean(exp(mod_csim)) / mean(dat$close)
+params_ <- do.call(rbind,mod_sim)
+y_hat <- rgamma(length(params_),
+                shape = params_[,1],
+                rate = params_[,2])
+y_hat <- na.omit(y_hat)
+mean(y_hat)
+boxplot(y_hat)
+max(y_hat)
