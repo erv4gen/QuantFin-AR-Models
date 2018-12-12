@@ -10,40 +10,32 @@ dat$month <- as.numeric(format(as.Date(dat$timestamp),'%m'))
 dat$year <-format(as.Date(dat$timestamp),'%y')
 dat$year <- as.numeric(dat$year)*100
 dat$monthyear <-dat$month + dat$year
-
+dat$vola <- (dat$close - dat$open) /dat$open
 
 library(dplyr)
 
-vola <- dat %>% 
-  filter(day <=min(day) | day >=max(day) )   %>% 
-  mutate(val_price = case_when(day==max(day) ~ adjusted_close,
-                              day==min(day) ~ open))   %>%
-  group_by(monthyear) %>%
- #summarise(vola= (max(val_price) - min(val_price)) / min(val_price))
-  summarise(vola= n())
+summa <-  dat %>% 
+         group_by(monthyear) %>%
+         summarise(mean=mean(vola),sd=sd(vola))
 
-vola <-aggregate(close ~ monthyear,
-                 dat,
-                 FUN = function(i) 
-                   (max(i) - min(i)) / min(i))
-vola['lvol'] <-NA
-vola['lvol'] <- log(vola['close'])
-head(vola)
+
+summa$vola <- summa$sd
+summa$vola[summa$mean<0] <- summa$sd[summa$mean<0] * -1
 
 
 #Plot a histogram of volatility distribution
-x <- vola$close * 100
-h<-hist(x, breaks=500, col="red", xlab="Volatility, %", 
+x <- summa$vola * 100
+h<-hist(x, breaks=80, col="red", xlab="Volatility, %", 
         main="Apple Monthy Volatility"
-        ,xlim = c(-50.50,150.5)
-#        ,ylim = c(0.0,200.0)
-       ,freq = FALSE) 
+        ,xlim = c(-9.50,9.5)
+        #        ,ylim = c(0.0,200.0)
+        ,freq = FALSE) 
 xfit<-seq(min(x),max(x),length=100) 
 yfit<-dnorm(xfit,mean=mean(x),sd=sd(x)) 
 yfit <- yfit*diff(h$mids[1:2])*length(x) 
 lines(xfit, yfit, col="blue", lwd=2)
 
-d <- density(vola$close)
+d <- density(summa$vola)
 plot(d)
 
 #distribution fitting
@@ -62,31 +54,32 @@ fit.weibull$aic
 fit.norm$aic
 fit.gamma$aic
 
-str(fit.gamma)
+#str(fit.gamma)
 
 fit.gamma$estimate
 
 
-rgamma(n = 1 ,shape = as.numeric(fit.gamma$estimate[c("shape")]), rate= as.numeric(fit.gamma$estimate["rate"]) )
-
+n_sim <-2000
+sims <- rgamma(n = n_sim ,shape = as.numeric(fit.gamma$estimate[c("shape")]), rate= as.numeric(fit.gamma$estimate["rate"]) )
+hist(sims)
 #Kolmogorov-Smirnov test simulation
 
 n.sims <- 5e4
 
 stats <- replicate(n.sims, 
-  {      
-          r <- rgamma(n = length(x)
-                        , shape = as.numeric(fit.gamma$estimate[c("shape")])
-                        , rate= as.numeric(fit.gamma$estimate["rate"])
-                       )
-          
-          as.numeric(ks.test(r
-                             , "pgamma"
-                             , shape = as.numeric(fit.gamma$estimate[c("shape")])
-                             , rate= as.numeric(fit.gamma$estimate["rate"])
-                             )$statistic
-                      )      
-  }
+                   {      
+                     r <- rgamma(n = length(x)
+                                 , shape = as.numeric(fit.gamma$estimate[c("shape")])
+                                 , rate= as.numeric(fit.gamma$estimate["rate"])
+                     )
+                     
+                     as.numeric(ks.test(r
+                                        , "pgamma"
+                                        , shape = as.numeric(fit.gamma$estimate[c("shape")])
+                                        , rate= as.numeric(fit.gamma$estimate["rate"])
+                     )$statistic
+                     )      
+                   }
 )
 
 plot(ecdf(stats), las = 1, main = "KS-test statistic simulation (CDF)", col = "darkorange", lwd = 1.7)
@@ -95,13 +88,13 @@ grid()
 #p-value for KS test
 fit <- logspline(stats)
 
-pvalue <- 1 - plogspline(ks.test(unique(x)
-                       , "pgamma"
-                       , shape = as.numeric(fit.gamma$estimate[c("shape")])
-                       , rate= as.numeric(fit.gamma$estimate["rate"])
-                      )$statistic
-               , fit
-              )
+pvalue <- 1.0 - plogspline(ks.test(unique(x)
+                                 , "pgamma"
+                                 , shape = as.numeric(fit.gamma$estimate[c("shape")])
+                                 , rate= as.numeric(fit.gamma$estimate["rate"])
+)$statistic
+, fit
+)
 
 library("rjags")
 library("coda")
