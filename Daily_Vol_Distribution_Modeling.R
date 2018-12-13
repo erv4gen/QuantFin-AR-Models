@@ -19,23 +19,22 @@ summa <-  dat %>%
          summarise(mean=mean(vola),sd=sd(vola))
 
 
-summa$vola <- summa$sd
-summa$vola[summa$mean<0] <- summa$sd[summa$mean<0] * -1
-
 
 #Plot a histogram of volatility distribution
-x <- summa$vola * 100
+x <- summa$sd * 100
 h<-hist(x, breaks=80, col="red", xlab="Volatility, %", 
         main="Apple Monthy Volatility"
-        ,xlim = c(-9.50,9.5)
+        ,xlim = c(0.0,9.5)
         #        ,ylim = c(0.0,200.0)
         ,freq = FALSE) 
 xfit<-seq(min(x),max(x),length=100) 
 yfit<-dnorm(xfit,mean=mean(x),sd=sd(x)) 
-yfit <- yfit*diff(h$mids[1:2])*length(x) 
+
+#yfit <- yfit*diff(h$mids[1:2])*length(x) 
 lines(xfit, yfit, col="blue", lwd=2)
 
-d <- density(summa$vola)
+
+d <- density(summa$sd)
 plot(d)
 
 #distribution fitting
@@ -46,25 +45,31 @@ descdist(x, discrete = FALSE)
 fit.weibull <- fitdist(x, "weibull")
 fit.norm <- fitdist(x, "norm")
 fit.gamma <- fitdist(x, "gamma")
+fit.lnorm <- fitdist(x, "lnorm")
 plot(fit.norm)
 plot(fit.weibull)
 plot(fit.gamma)
+plot(fit.lnorm)
 
-fit.weibull$aic
-fit.norm$aic
-fit.gamma$aic
-
+aic <-c(fit.weibull$aic,
+  fit.norm$aic,
+  fit.gamma$aic,
+  fit.lnorm$aic)
+names(aic) <- c('weibull','norm','gamma','lnorm')
 #str(fit.gamma)
 
 fit.gamma$estimate
 
 
+#Gamma Model testing
 n_sim <-2000
-sims <- rgamma(n = n_sim ,shape = as.numeric(fit.gamma$estimate[c("shape")]), rate= as.numeric(fit.gamma$estimate["rate"]) )
+sims <- rgamma(n = n_sim,
+               shape = as.numeric(fit.gamma$estimate[c("shape")]),
+               rate= as.numeric(fit.gamma$estimate["rate"]) )
 hist(sims)
 #Kolmogorov-Smirnov test simulation
 
-n.sims <- 5e4
+n.sims <- 5e3
 
 stats <- replicate(n.sims, 
                    {      
@@ -88,13 +93,19 @@ grid()
 #p-value for KS test
 fit <- logspline(stats)
 
-pvalue <- 1.0 - plogspline(ks.test(unique(x)
-                                 , "pgamma"
-                                 , shape = as.numeric(fit.gamma$estimate[c("shape")])
-                                 , rate= as.numeric(fit.gamma$estimate["rate"])
-)$statistic
-, fit
-)
+ks_stata <- ks.test(unique(x)
+                   , "pgamma"
+                   , shape = as.numeric(fit.gamma$estimate[c("shape")])
+                   , rate= as.numeric(fit.gamma$estimate["rate"])
+                   )$statistic
+
+ks_results <-  1.0 - plogspline(ks_stata
+                                ,fit
+                                )
+
+n_samples_level_05 <- 1.36/ (sqrt(length(x)))
+n_samples_level_001 <- 1.22/ (sqrt(length(x)))
+
 
 library("rjags")
 library("coda")
@@ -106,8 +117,8 @@ mod_string <- "model {
     y[i] ~ dgamma(alpha,beta)
   }
   #Prior
-  alpha ~ dnorm(1.80567063,1.0/1.0*250)
-  beta ~ dnorm(0.09418998, 1.0/1.0*1050)
+  alpha ~ dnorm(a_mu,1.0/1.0)
+  beta ~ dnorm(b_mu, 1.0/1.0)
   
                     }"
 #Set up the model
@@ -115,19 +126,25 @@ set.seed(50)
 
 
 n = nrow(vola)
-data_jags <- list(y=vola$lvol,n=n)
+data_jags <- list(y=vola$lvol,
+                  n=n,
+                  a_mu=as.numeric(fit.gamma$estimate[c("shape")]),
+                  b_mu = as.numeric(fit.gamma$estimate[c("rate")])
+                  )
+
 params <- c("alpha","beta")
 
 inits <- function() {
-  alpha_init = 1.80567063
-  beta_inits = 0.09418998
+  alpha_init = as.numeric(fit.gamma$estimate[c("shape")])
+  beta_inits = as.numeric(fit.gamma$estimate[c("rate")])
   inits <- list("alpha" = alpha_init,
                 "beta" =beta_inits )
 }
 
 mod = jags.model(textConnection(mod_string),
                  data = data_jags,
-                 inits = inits,n.adapt = 5e2,
+                 inits = inits,
+                 n.adapt = 5e2,
                  n.chains = 3)
 
 
