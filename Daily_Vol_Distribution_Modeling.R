@@ -107,66 +107,87 @@ n_samples_level_05 <- 1.36/ (sqrt(length(x)))
 n_samples_level_001 <- 1.22/ (sqrt(length(x)))
 
 
-library("rjags")
+library("rjags") 
 library("coda")
 
-
-mod_string <- "model {
-  #Likelihood
-  for(i in 1:n) {
-    y[i] ~ dgamma(alpha,beta)
-  }
-  #Prior
-  alpha ~ dnorm(a_mu,1.0/1.0)
-  beta ~ dnorm(b_mu, 1.0/1.0)
+VolaModel <- function(sig_sq=1.0) {
   
-                    }"
-#Set up the model
-set.seed(50)
 
-
-n = nrow(vola)
-data_jags <- list(y=vola$lvol,
-                  n=n,
-                  a_mu=as.numeric(fit.gamma$estimate[c("shape")]),
-                  b_mu = as.numeric(fit.gamma$estimate[c("rate")])
-                  )
-
-params <- c("alpha","beta")
-
-inits <- function() {
-  alpha_init = as.numeric(fit.gamma$estimate[c("shape")])
-  beta_inits = as.numeric(fit.gamma$estimate[c("rate")])
-  inits <- list("alpha" = alpha_init,
-                "beta" =beta_inits )
+  mod_string <- "model {
+    #Likelihood
+    for(i in 1:n) {
+      y[i] ~ dgamma(alpha,beta)
+    }
+    #Prior
+    alpha ~ dnorm(a_mu,1.0/sig_sq)
+    beta ~ dnorm(b_mu, 1.0/sig_sq)
+    
+                      }"
+  #Set up the model
+  set.seed(50)
+  
+  
+  n = nrow(summa)
+  data_jags <- list(y=summa$sd,
+                    n=n,
+                    a_mu=as.numeric(fit.gamma$estimate[c("shape")]),
+                    b_mu = as.numeric(fit.gamma$estimate[c("rate")]),
+                    sig_sq = 0.5
+                    )
+  
+  params <- c("alpha","beta")
+  
+  inits <- function() {
+    alpha_init = as.numeric(fit.gamma$estimate[c("shape")])
+    beta_inits = as.numeric(fit.gamma$estimate[c("rate")])
+    inits <- list("alpha" = alpha_init,
+                  "beta" =beta_inits )
+  }
+  
+  mod = jags.model(textConnection(mod_string),
+                   data = data_jags,
+                   inits = inits,
+                   n.adapt = 1e2,
+                   n.chains = 3)
+  
+  
+  
+  mod_sim <-coda.samples(model = mod,
+                         variable.names = params,
+                         n.iter =1e4)
+  
+  #Post processing 
+  
+  #plot(mod_sim)
+  print(summary(mod_sim))
+  
+  print(gelman.diag(mod_sim))
+  #autocorr.plot(mod_sim)
+  print(autocorr.diag(mod_sim))
+  effectiveSize(mod_sim)
+  mod_csim  <- as.mcmc(do.call(rbind,mod_sim))
+  params_ <- do.call(rbind,mod_sim)
+  
+  y_hat <- rgamma(length(params_),
+                  shape = params_[,1],
+                  rate = params_[,2])
+  y_hat <- na.omit(y_hat)
+  
+  y_hat_dummy <-rgamma(length(params_),
+                       shape = as.numeric(fit.gamma$estimate["shape"])
+                       , rate= as.numeric(fit.gamma$estimate["rate"]))
+ 
+  return(y_hat) 
 }
 
-mod = jags.model(textConnection(mod_string),
-                 data = data_jags,
-                 inits = inits,
-                 n.adapt = 5e2,
-                 n.chains = 3)
-
-
-
-mod_sim <-coda.samples(model = mod,
-                       variable.names = params,
-                       n.iter =5e5)
-
-#Post processing 
-
-plot(mod_sim)
-summary(mod_sim)
-
-gelman.diag(mod_sim)
-autocorr.diag(mod_sim)
-effectiveSize(mod_sim)
-mod_csim  <- as.mcmc(do.call(rbind,mod_sim))
-params_ <- do.call(rbind,mod_sim)
-y_hat <- rgamma(length(params_),
-                shape = params_[,1],
-                rate = params_[,2])
-y_hat <- na.omit(y_hat)
+y_hat <-VolaModel(sig_sq = 1.0)
 mean(y_hat)
-boxplot(y_hat)
+mean(y_hat_dummy)
+
+boxplot(y_hat*100)
+boxplot(y_hat_dummy)
 max(y_hat)
+
+plot(density(y_hat))
+mean(y_hat>0.10)
+
