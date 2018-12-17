@@ -3,6 +3,10 @@ library(dplyr)
 source('DistributionFitting.R')
 source('Model_Vola_Monthly.R')
 
+
+
+
+#Reading initial Data
 dat = read.csv("c:/data/Datasets/stockprices/AAPL.csv",
                header=TRUE)
 
@@ -13,14 +17,13 @@ png(filename = fname)
 head(dat)
 str(dat)
 
+
+#Transform data. Grouping by month, calculating sd for monthly volatility
 dat$day <-format(as.Date(dat$timestamp),'%d')
 dat$month <- as.numeric(format(as.Date(dat$timestamp),'%m'))
-dat$year <-format(as.Date(dat$timestamp),'%y')
-dat$year <- as.numeric(dat$year)*100
+dat$year <- as.numeric(format(as.Date(dat$timestamp),'%y')) *100
 dat$monthyear <-dat$month + dat$year
 dat$vola <- (dat$close - dat$open) /dat$open
-
-
 
 summa <-  dat %>% 
   group_by(monthyear) %>%
@@ -28,7 +31,7 @@ summa <-  dat %>%
 
 
 
-#Plot a histogram of volatility distribution
+#Plot a histogram of empirical volatility distribution
 x <- summa$sd * 100
 h<-hist(x, breaks=80, col="red", xlab="Volatility, %", 
         main="Apple Monthy Volatility"
@@ -45,31 +48,43 @@ lines(xfit, yfit, col="blue", lwd=2)
 d <- density(summa$sd)
 plot(d)
 empirical_distribution <- summa$sd
-mean(empirical_distribution)
+cat('Mean Empirical probability: ',mean(empirical_distribution))
+cat('Probability of high volatility on empirical data: ',mean(empirical_distribution>0.10))
 
 dev.off()
 
-fit_statistics <-FitDistribution(x=empirical_distribution)
 
 
-y_hat <-MVolaModel(sig_sq = 1.0
-                  ,n_samples=1e3
-                  ,alpha_prior = as.numeric(fit_statistics$fit$gamma$estimate[c("shape")])
-                  ,beta_prior = as.numeric(fit_statistics$fit$gamma$estimate[c("rate")])
-                  )
+#Fit diferent probability functions and find the best aproximations
+fit_stat <-FitDistribution(X=empirical_distribution)
+cat("KS-test Confidence - ",fit_stat[[3]])
+Sys.sleep(3)
+
+#Creating the model
+sim_to_test <- rep(40,8) / 2^(0:8)
+
+res <- data.frame('Sigma'=0
+                  ,'Mean Volatility'=0
+                  ,'Max Volatility'=0
+                  ,'High Volatility Probability'=0)
 
 
-fname= "png/Posterior%03d.png"
-png(filename = fname)                  
-mean(y_hat)
-#mean(y_hat_dummy)
+for(i in 1:length(sim_to_test)) {
+  
+  #Sample MCMC model with defined paramethers
+  y_hat <-MVolaModel(X=summa$sd
+                     ,sig_sq = sim_to_test[i]
+                     ,n_samples=1e3
+                     ,alpha_prior = as.numeric(fit_stat[[1]]$gamma$estimate[c("shape")])
+                     ,beta_prior = as.numeric(fit_stat[[1]]$gamma$estimate[c("rate")])
+                    )
+  
+  #Collect statistics
+  res[i,] <-list(sim_to_test[i]
+                 ,mean(y_hat)
+                 ,max(y_hat)
+                 ,mean(y_hat>0.10))
+  
 
-boxplot(y_hat*100)
-#boxplot(y_hat_dummy)
-max(y_hat)
-
-plot(density(y_hat))
-mean(y_hat>0.10)
-
-dev.off()
-
+  }
+res

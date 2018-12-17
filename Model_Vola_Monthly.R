@@ -2,12 +2,13 @@ library("rjags")
 library("coda")
 
 
-MVolaModel <- function(sig_sq=1.0
+MVolaModel <- function(X=c(1,1,1)
+                       ,sig_sq=1.0
                        ,n_samples=1e5
                        ,alpha_prior = 1.0
                        ,beta_prior = 1.0) {
   
-  fname= "png/MonthHierarchicalModelPlot%03d.png"
+  fname= paste("png/MonthHierarchicalModel",sig_sq,"%03d.png")
   cat('Creating a hierarchical model.\nPrints will be saved to:' , fname)
   png(filename = fname)
   mod_string <- "model {
@@ -25,11 +26,11 @@ MVolaModel <- function(sig_sq=1.0
   
   
   n = nrow(summa)
-  data_jags <- list(y=summa$sd,
+  data_jags <- list(y=X,
                     n=n,
                     a_mu= alpha_prior,
                     b_mu = beta_prior,
-                    sig_sq = 0.5
+                    sig_sq = sig_sq
   )
   
   params <- c("alpha","beta")
@@ -75,6 +76,8 @@ MVolaModel <- function(sig_sq=1.0
                        shape = alpha_prior
                        ,rate= beta_prior
                        )
-  
+  boxplot(y_hat*100)
+  plot(density(y_hat))
+  dev.off()
   return(y_hat) 
 }

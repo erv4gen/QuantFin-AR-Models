@@ -6,9 +6,10 @@ library(logspline)
 
 
 
-FitDistribution <-function(x
+FitDistribution <-function(X = c(1)
                            ,n.sims = 5e4
                            , compare_to = 'gamma') {
+  
   fname= "png/FitDistributionPlot%03d.png"
   
   cat('Fitting distribution to the data.\nPrints will be saved to:' , fname)
@@ -63,8 +64,8 @@ FitDistribution <-function(x
   , pfit
   )
   
-  return(list(fit_object=fit
-              ,ks_test = ks_test
-              ,pvalue_confidence = pvalue_confidence)
+  return(list(fit
+              ,ks_test
+              ,pvalue_confidence)
          )
 }
