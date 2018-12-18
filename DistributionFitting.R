@@ -20,6 +20,7 @@ FitDistribution <-function(X = c(1)
   
   fit$weibull <- fitdist(x, "weibull")
   fit$norm <- fitdist(x, "norm")
+  fit$lnorm <- fitdist(x, "lnorm")
   fit$gamma <- fitdist(x, "gamma")
 
   
