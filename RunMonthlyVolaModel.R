@@ -93,17 +93,28 @@ SearchSigma <- function(frm,steps) {
   res[i,] <-list(sim_to_test[i]
                  ,mean(y_hat)
                  ,max(y_hat)
-                 ,mean(y_hat>mean(empirical_distribution*4)))
+                 ,mean(y_hat>mean(empirical_distribution*3)))
   
 
                                 }
     return(res)
   }
 
-
-frm <- 160
-steps <- 15
-res <- SearchSigma(frm,steps)
+#find best fit for sigma
+frm <- 320
+steps <- 20
+(res <- SearchSigma(frm,steps))
 
 summary(empirical_distribution)
-mean(empirical_distribution> 2*mean(empirical_distribution))
+mean(empirical_distribution> 3*mean(empirical_distribution))
+
+#get_sims
+y_hat <-MVolaModel(X=summa$sd
+                   ,sig_sq = 4e1
+                   ,n_samples=1e5
+                   ,alpha_prior = as.numeric(fit_stat[[1]]$gamma$estimate[c("shape")])
+                   ,beta_prior = as.numeric(fit_stat[[1]]$gamma$estimate[c("rate")])
+                  )
+
+
+boxplot(y_hat,main="Posterion Samples Distribution")
