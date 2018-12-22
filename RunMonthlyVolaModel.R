@@ -47,7 +47,7 @@ yfit<-dnorm(xfit,mean=mean(x),sd=sd(x))
 #yfit <- yfit*diff(h$mids[1:2])*length(x) 
 lines(xfit, yfit, col="blue", lwd=2)
 
-md <- density(summa$md)
+md <- density(summa$sd)
 d <- density(summa$sd)
 plot(d)
 empirical_distribution <- summa$sd
@@ -118,3 +118,5 @@ y_hat <-MVolaModel(X=summa$sd
 
 
 boxplot(y_hat,main="Posterion Samples Distribution")
+
+write.csv(y_hat,"c:/data/Datasets/Options/aapl_vola_sims.csv",row.names = FALSE)
