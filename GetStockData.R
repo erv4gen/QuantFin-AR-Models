@@ -1,12 +1,13 @@
 library(Quandl)
 library(dplyr)
+setwd("C:/pjt/QuantFin-Volatility")
 quandlapi <- readr::read_file('nogit/quandlapi.txt')
 Quandl.api_key(quandlapi)
 data <- Quandl("XNAS/AAPL")
 path_to_save <- 'c:/data/Datasets/Quandl/AAPL.csv'
 write.csv(data,path_to_save)
 
-old_dat_file <- "c:/data/Datasets/stockprices_dump/AAPL.csv"
+old_dat_file <- "c:/data/Datasets/Finance/Stocks_Prices/AAPL.csv"
 
 exit_file <- "c:/data/Datasets/stockprices/AAPL.csv"
 
