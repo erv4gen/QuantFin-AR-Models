@@ -2,11 +2,25 @@
 
 Wednesday, December 26, 2018
 
-9:52 PM
-
 **Problem**
 
-Usually, financial models that analyze the risk base on the assumptions about the normality of stock return distribution. It leads to systematical underestimation the probability of intense volatility periods.
+In the financial world, it is often can be found examples of the application of the modeling price return distribution with an assumption of its normality. Applying the normal distribution in the price simulation makes the model relatively simple and computational chip. It also a very convenient solution when an analyst doesn&#39;t have any additional information about the underlying financial asset. Such assumptions can lead to the underestimation of the &quot;long tail&quot; type evens, such as market shocks/recessions and so fore.
+
+This research is exploring how to estimate a price distribution from the historical data and use it in the &quot;Mont Carlo&quot; price simulations.
+
+**Abstract**
+
+Volatility can be identified as a difference between the minimum and maximum price in the defined period. If the initial stock price and monthly volatility are known, a risk of the high volatility can be estimated. In another world, the probability that stock&#39;s price at the end of the month will be lower than at the beginning.
+
+![alt text](img/img1.png)
+
+Where &quot;price\_a&quot; is simulated current/ending price of the period, and &quot;price\_b&quot; is a starting price of the period.
+
+Then we can set up the &quot;risk thresholds&quot; that could be identified as: &quot;If an asset has more than n% risk of negative return, we should consider it as non-inestimable&quot; or &quot;If an asset has more than n% risk of negative return we won&#39;t open a short option position on it&quot;
+
+&quot;Simulated&quot; price means a theoretical price drown from the approximate distribution of the asset volatility. If the distribution is known (or at least the most appropriate one) we can use Monte Carlo simulations to &quot;look to the future&quot; and estimate where price could be after n-periods of time.
+
+
 
 **Plan**
 
@@ -20,19 +34,7 @@ Usually, financial models that analyze the risk base on the assumptions about th
 
 The data source I used for this research Yahoo Finance, an open online database for economic and financial data. Historical quotes were loaded directly using R API without any changes and preprocessing.
 
-**Abstract**
-
-Volatility can be identified as a difference between the minimum and maximum price in the defined period. If the initial stock price and monthly volatility are known, a risk of the high volatility can be estimated. In another world, the probability that stock&#39;s price at the end of the month will be lower than at the beginning.
-
-![alt text](img/img1.png)
-
-Where &quot;price\_a&quot; is simulated current/ending price of the period, and &quot;price\_b&quot; is a starting price of the period.
-
-Then we can set up the &quot;risk thresholds&quot; that could be identified as: &quot;If an asset has more than n% risk of negative return, we should consider it as non-inestimable&quot; or &quot;If an asset has more than n% risk of negative return we won&#39;t open a short option position on it&quot;
-
-&quot;Simulated&quot; price means a theoretical price drown form the approximate distribution of the asset volatility. If the distribution is known (or at least the most appropriate one) we can use Monte Carlo simulations to &quot;look to the future&quot; and estimate where price could be after n-periods of time.
-
-**Distribution approximation**
+**Model**
 
 To calculate monthly volatility, I got historic market data from yahoo finance, aggregated it by month and estimated relative volatility with:
 
@@ -63,11 +65,13 @@ Here&#39;s a plot of the kurtosis and squared skewness of our samples:
 ![alt text](img/img6.png)
 
 
+
 It gives some basic estimations about potential candidates for theoretical distribution.
 
 We see that the closest estimation will be a lognormal distribution.
 
 The AIC statistics for Weibull, normal, gamma and log-normal are the following:
+
 
 ```
 >aic_df
@@ -76,6 +80,7 @@ The AIC statistics for Weibull, normal, gamma and log-normal are the following:
 
 1 550.6034 525.3154 609.4202 520.4791
 ```
+
 As we see, both gamma and log-normal distribution have fit the data well.
 
 I&#39;ll test both gamma and lnorm models separately and see which gives a better return on the backtesting stage. Let&#39;s start with a gamma distribution. Because it has higher kurtosis, it better represents the underlying asset behavior.
@@ -88,8 +93,7 @@ Solving Maximum Likelihood estimation for the Gamma distribution, we can get the
 3.848280 2.952326
 
 ```
-
-Then, using these parameters, we can create a simple hierarchical Bayesian model to sampling monthly stock volatility. To create MCMC model, we&#39;ll use JAGS, and it&#39;s R API. String representation of the model looks following:
+Then, using these parameters, we can create a simple hierarchical Bayesian model for sampling monthly stock volatility. To create the MCMC model, we&#39;ll use JAGS, and it&#39;s R API. The string representation of the model looks following:
 
 Using these parameters we drown random vector form Gamma (shape, rate) using founded parameters. After that, we can calculate the Kolmogorov-Smirnov test to identify what is the probability that simulated and observed data points are from the same Gamma distribution.The Kolmogorov–Smirnov statistic is 0.041. Hence, for the significance level 0.01 level, the p-value is 0.072, we can strongly assume that the observed samples are drowned from a Gamma distribution.
 
@@ -150,6 +154,7 @@ We can reasonably assume that the chain converted and exploring stationary distr
 Now, let&#39;s tweak the model to find the best fit for the real-life patterns. Using the free sigma parameter, we can control the maximum &quot;allowed&quot; size of outliers in volatility and probability of high volatility periods.
 
 Here&#39;s a result of ten simulations with gradually decreasing sigma from 80 to 0.07:
+
 ```
 >results
        Sigma Mean.Volatility Max.Volatility High.Volatility.Probability
@@ -179,7 +184,8 @@ We see that the best fit to empirical data will be a model with a sigma paramete
 
 The boxplot for the result distribution is the following:
 
-![alt text](img/img8.png)
+
+<img src="img/img8.png" width="350" height="350" />
 
 
 ```
@@ -188,4 +194,10 @@ The boxplot for the result distribution is the following:
 
 ```
 
-We see that most of the distribution mass lay around 6% with high volatility outliers. Indeed, AAPL stock price had 20% volatility in late 2018 after more than ten years of stable growth.
+We see that most of the distribution mass lay around 6% with high volatility outliers. Indeed, the AAPL stock price had 20% volatility in late 2018 after more than ten years of stable growth.
+
+
+
+**Conclusion**
+
+As it was shown, JAGS simulations yield a realistic distribution which accounts low-probability &quot;tails&quot; events. Estimated values generated by JAGS can be used to define the probability for the different price levels and use them to evaluate the risk of the specific finance asset.
