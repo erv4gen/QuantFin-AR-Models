@@ -12,7 +12,7 @@ This research is exploring how to estimate a price distribution from the histori
 
 Volatility can be identified as a difference between the minimum and maximum price in the defined period. If the initial stock price and monthly volatility are known, a risk of the high volatility can be estimated. In another world, the probability that stock&#39;s price at the end of the month will be lower than at the beginning.
 
-![alt text](img/img1.png)
+![alt text]([img/img1.png](https://github.com/erv4gen/QuantFin-AR-Models/blob/9f9ed3333f0077b6f628aeabb9b6eefccba34fcd/img/img1.png))
 
 Where &quot;price\_a&quot; is simulated current/ending price of the period, and &quot;price\_b&quot; is a starting price of the period.
 
