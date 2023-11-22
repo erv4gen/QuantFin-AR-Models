@@ -12,7 +12,7 @@ This research is exploring how to estimate a price distribution from the histori
 
 Volatility can be identified as a difference between the minimum and maximum price in the defined period. If the initial stock price and monthly volatility are known, a risk of the high volatility can be estimated. In another world, the probability that stock&#39;s price at the end of the month will be lower than at the beginning.
 
-![alt text]([img/img1.png](https://github.com/erv4gen/QuantFin-AR-Models/blob/9f9ed3333f0077b6f628aeabb9b6eefccba34fcd/img/img1.png))
+![img/img1.png](https://github.com/erv4gen/QuantFin-AR-Models/blob/9f9ed3333f0077b6f628aeabb9b6eefccba34fcd/img/img1.png)
 
 Where &quot;price\_a&quot; is simulated current/ending price of the period, and &quot;price\_b&quot; is a starting price of the period.
 
@@ -38,7 +38,8 @@ The data source I used for this research Yahoo Finance, an open online database 
 
 To calculate monthly volatility, I got historic market data from yahoo finance, aggregated it by month and estimated relative volatility with:
 
-![alt text](img/img2.png)
+![img/img2.png](https://github.com/erv4gen/QuantFin-AR-Models/blob/f0a62312aec86324f463bddab265170eb4eaca52/img/img2.png)
+
 
 
 
@@ -48,11 +49,11 @@ To estimate stock&#39;s monthly volatility, we need to find it&#39;s mean daily 
 
 Assuming that each volatility observation is independent, the monthly volatility can be expressed from daily volatility using the following expression:
 
-![alt text](img/img3.png)
+![alt text](https://github.com/erv4gen/QuantFin-AR-Models/blob/f0a62312aec86324f463bddab265170eb4eaca52/img/img3.png)
 
 Here&#39;s a density plot of the monthly stock volatility and fitted normal distribution function:
 
-![alt text](img/img5.png)
+![alt text](https://github.com/erv4gen/QuantFin-AR-Models/blob/f0a62312aec86324f463bddab265170eb4eaca52/img/img5.png)
 
 As we see, the most decency mass is concentrated in 0%-4% range. We also recognize that there was a couple of month with extremely high volatility when stock returned around 6% ROI.
 
@@ -62,7 +63,7 @@ Now, let us try to fit different probability density functions and see which one
 
 Here&#39;s a plot of the kurtosis and squared skewness of our samples:
 
-![alt text](img/img6.png)
+![alt text](https://github.com/erv4gen/QuantFin-AR-Models/blob/f0a62312aec86324f463bddab265170eb4eaca52/img/img6.png)
 
 
 
@@ -122,7 +123,7 @@ Here&#39;s a trace plot for the simulations:
 
 The trace plot for the model looks the following:
 
-![alt text](img/img7.png)
+![alt text](https://github.com/erv4gen/QuantFin-AR-Models/blob/f0a62312aec86324f463bddab265170eb4eaca52/img/img7.png)
 
 
 
@@ -185,7 +186,7 @@ We see that the best fit to empirical data will be a model with a sigma paramete
 The boxplot for the result distribution is the following:
 
 
-<img src="img/img8.png" width="350" height="350" />
+<img src="https://github.com/erv4gen/QuantFin-AR-Models/blob/f0a62312aec86324f463bddab265170eb4eaca52/img/img8.png" width="350" height="350" />
 
 
 ```
